@@ -438,14 +438,18 @@ rm -f /etc/nginx/sites-enabled/${APP_NAME}.conf 2>/dev/null || true
 rm -f /etc/nginx/sites-available/${APP_NAME}.conf 2>/dev/null || true
 
 # Remove any old legacy configs referencing osut.org or 1.osut.org that cause 502/expired certs
-grep -rlE "(1\.osut\.org|osut\.org)" /etc/nginx/sites-enabled/ /etc/nginx/conf.d/ 2>/dev/null | while read -r legacy_conf; do
-    log_warn "Removing legacy Nginx virtual host: $legacy_conf"
-    rm -f "$legacy_conf" 2>/dev/null || true
+for legacy_conf in $(grep -rlE "(1\.osut\.org|osut\.org)" /etc/nginx/sites-enabled/ /etc/nginx/conf.d/ 2>/dev/null || true); do
+    if [ -f "$legacy_conf" ] || [ -L "$legacy_conf" ]; then
+        log_warn "Removing legacy Nginx virtual host: $legacy_conf"
+        rm -f "$legacy_conf" 2>/dev/null || true
+    fi
 done
 
 # Strip default_server from any remaining configurations to prevent conflict
-grep -rl "default_server" /etc/nginx/sites-enabled/ /etc/nginx/conf.d/ 2>/dev/null | while read -r conf_file; do
-    sed -i 's/default_server//g' "$conf_file" 2>/dev/null || true
+for conf_file in $(grep -rl "default_server" /etc/nginx/sites-enabled/ /etc/nginx/conf.d/ 2>/dev/null || true); do
+    if [ -f "$conf_file" ] || [ -L "$conf_file" ]; then
+        sed -i 's/default_server//g' "$conf_file" 2>/dev/null || true
+    fi
 done
 
 # 2. Determine target Nginx configuration file
