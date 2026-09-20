@@ -437,6 +437,11 @@ rm -f /etc/nginx/conf.d/${APP_NAME}.conf /etc/nginx/conf.d/${APP_NAME}*.conf 2>/
 rm -f /etc/nginx/sites-enabled/${APP_NAME}.conf 2>/dev/null || true
 rm -f /etc/nginx/sites-available/${APP_NAME}.conf 2>/dev/null || true
 
+# Strip default_server from any remaining configurations to prevent conflict
+grep -rl "default_server" /etc/nginx/sites-enabled/ /etc/nginx/conf.d/ 2>/dev/null | while read -r conf_file; do
+    sed -i 's/default_server//g' "$conf_file" 2>/dev/null || true
+done
+
 # 2. Determine target Nginx configuration file
 if [ -d /etc/nginx/sites-available ] && [ -d /etc/nginx/sites-enabled ]; then
     NGINX_AVAILABLE="/etc/nginx/sites-available/${APP_NAME}.conf"
