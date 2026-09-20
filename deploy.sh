@@ -27,6 +27,7 @@ log_error()   { echo -e "${RED}[ERROR]${NC} $1"; }
 
 # --- DEFAULT CONFIGURATION ---
 GIT_REPO="${GIT_REPO:-https://github.com/osutcj/osut.git}"
+GITHUB_TOKEN="${GITHUB_TOKEN:-}"
 BRANCH="${BRANCH:-main}"
 APP_NAME="${APP_NAME:-osut}"
 APP_DIR="${APP_DIR:-/var/www/${APP_NAME}}"
@@ -54,6 +55,7 @@ Deploys on Port 80 & Port 443 (SSL) via Nginx reverse proxy to Next.js on 127.0.
 Options:
   --domain <domain>         Domain name to configure (default: osut.org)
   --email <email>           Email address for Let's Encrypt SSL renewal alerts (default: office@osutcluj.com)
+  --github-token <token>    GitHub Personal Access Token for authenticated clone/fetch
   --dir <path>              Application installation directory (default: /var/www/osut)
   --user <username>         Dedicated system user for the service (default: osut)
   --branch <branch>         Git branch to deploy (default: main)
@@ -66,7 +68,7 @@ Options:
   -h, --help                Show this help message and exit
 
 Environment Variables:
-  DOMAIN, SSL_EMAIL, APP_DIR, APP_USER, BRANCH, GIT_REPO,
+  DOMAIN, SSL_EMAIL, GITHUB_TOKEN, APP_DIR, APP_USER, BRANCH, GIT_REPO,
   ADMIN_PASSWORD, BLOB_READ_WRITE_TOKEN, APP_INTERNAL_PORT
 
 EOF
@@ -79,6 +81,8 @@ while [[ $# -gt 0 ]]; do
             DOMAIN="$2"; shift 2 ;;
         --email|--ssl-email)
             SSL_EMAIL="$2"; shift 2 ;;
+        --github-token|--token)
+            GITHUB_TOKEN="$2"; shift 2 ;;
         --skip-ssl|--no-ssl)
             ENABLE_SSL=false; shift ;;
         --force-ssl)
@@ -107,10 +111,23 @@ while [[ $# -gt 0 ]]; do
     esac
 done
 
+# If GitHub Token is supplied, inject it securely into GIT_REPO URL
+if [ -n "$GITHUB_TOKEN" ]; then
+    if [[ "$GIT_REPO" =~ ^https://github\.com/ ]]; then
+        GIT_REPO="https://x-access-token:${GITHUB_TOKEN}@github.com/${GIT_REPO#https://github.com/}"
+    elif [[ "$GIT_REPO" =~ ^https:// ]]; then
+        # Strip any existing user credentials and insert token
+        GIT_REPO="https://x-access-token:${GITHUB_TOKEN}@${GIT_REPO#https://*@}"
+    fi
+fi
+
+# Mask any token in log output
+LOG_REPO_URL=$(echo "$GIT_REPO" | sed -E 's#https://[^@]+@#https://***@#')
+
 echo -e "${BLUE}============================================================${NC}"
 echo -e "${BOLD}${CYAN}      OSUT Next.js Production Deployment Script        ${NC}"
 echo -e "${BLUE}============================================================${NC}"
-log_info "Repository:        ${GIT_REPO}"
+log_info "Repository:        ${LOG_REPO_URL}"
 log_info "Branch:            ${BRANCH}"
 log_info "Target Directory:  ${APP_DIR}"
 log_info "Target Domain:     ${DOMAIN}"
@@ -253,7 +270,7 @@ if [ "$CURRENT_SCRIPT_DIR" != "$APP_DIR" ] && [ -f "${CURRENT_SCRIPT_DIR}/packag
 fi
 
 if [ ! -d "$APP_DIR/.git" ]; then
-    log_info "Cloning repository ${GIT_REPO} into ${APP_DIR}..."
+    log_info "Cloning repository ${LOG_REPO_URL} into ${APP_DIR}..."
     safe_git clone --branch "$BRANCH" "$GIT_REPO" "$APP_DIR"
     log_success "Repository cloned."
 else
@@ -412,6 +429,15 @@ log_success "Next.js application is running healthy on 127.0.0.1:${APP_INTERNAL_
 # --- STEP 8: CONFIGURE NGINX & REVERSE PROXY ON PORT 80 ---
 log_info "Configuring Nginx reverse proxy..."
 
+# 1. Clean up any conflicting default configurations or old osut configs across both directories
+log_info "Removing any conflicting or duplicate Nginx virtual hosts..."
+rm -f /etc/nginx/sites-enabled/default 2>/dev/null || true
+rm -f /etc/nginx/conf.d/default.conf 2>/dev/null || true
+rm -f /etc/nginx/conf.d/${APP_NAME}.conf /etc/nginx/conf.d/${APP_NAME}*.conf 2>/dev/null || true
+rm -f /etc/nginx/sites-enabled/${APP_NAME}.conf 2>/dev/null || true
+rm -f /etc/nginx/sites-available/${APP_NAME}.conf 2>/dev/null || true
+
+# 2. Determine target Nginx configuration file
 if [ -d /etc/nginx/sites-available ] && [ -d /etc/nginx/sites-enabled ]; then
     NGINX_AVAILABLE="/etc/nginx/sites-available/${APP_NAME}.conf"
     NGINX_ENABLED="/etc/nginx/sites-enabled/${APP_NAME}.conf"
@@ -448,13 +474,13 @@ if [ "$DOMAIN" != "localhost" ] && ! [[ "$DOMAIN" =~ ^[0-9]+\.[0-9]+\.[0-9]+\.[0
 fi
 SERVER_NAMES="${DOMAINS_LIST[*]}"
 
-# Write initial Port 80 Nginx configuration
+# Write clean Port 80 Nginx configuration (without duplicate default_server keyword)
 write_http_only_nginx() {
     cat > "$NGINX_AVAILABLE" <<EOF
 # OSUT Application - HTTP Configuration
 server {
-    listen 80 default_server;
-    listen [::]:80 default_server;
+    listen 80;
+    listen [::]:80;
     server_name ${SERVER_NAMES} _;
 
     client_max_body_size 50M;
@@ -497,8 +523,8 @@ write_ssl_nginx() {
     cat > "$NGINX_AVAILABLE" <<EOF
 # OSUT Application - HTTP to HTTPS Redirect & ACME Challenge
 server {
-    listen 80 default_server;
-    listen [::]:80 default_server;
+    listen 80;
+    listen [::]:80;
     server_name ${SERVER_NAMES} _;
 
     location ^~ /.well-known/acme-challenge/ {
@@ -550,11 +576,6 @@ server {
 EOF
 }
 
-# Remove default site to prevent virtual host conflict on Debian/Ubuntu
-if [ -f /etc/nginx/sites-enabled/default ] && [ "$NGINX_ENABLED" != "/etc/nginx/sites-enabled/default" ]; then
-    rm -f /etc/nginx/sites-enabled/default 2>/dev/null || true
-fi
-
 # Initial Port 80 activation
 log_info "Writing initial Port 80 Nginx reverse proxy configuration..."
 write_http_only_nginx
@@ -563,7 +584,10 @@ if [ "$NGINX_AVAILABLE" != "$NGINX_ENABLED" ]; then
     ln -sf "$NGINX_AVAILABLE" "$NGINX_ENABLED"
 fi
 
+log_info "Testing Nginx configuration syntax..."
 nginx -t
+
+log_info "Starting Nginx web server on Port 80..."
 systemctl enable nginx
 systemctl restart nginx
 log_success "Nginx is active and reverse-proxying Port 80."
@@ -586,6 +610,7 @@ if [ "$ENABLE_SSL" = true ] && [ "$DOMAIN" != "localhost" ] && ! [[ "$DOMAIN" =~
         CERTBOT_EXTRA_FLAGS="--keep-until-expiring"
     fi
 
+    # Execute certbot
     if certbot certonly --webroot -w "${ACME_WEBROOT}" \
         ${CERTBOT_DOMAIN_ARGS} \
         --non-interactive \
@@ -608,8 +633,8 @@ if [ "$ENABLE_SSL" = true ] && [ "$DOMAIN" != "localhost" ] && ! [[ "$DOMAIN" =~
             fi
         fi
     else
-        log_warn "SSL certificate issuance could not complete. Port 80 remains active and functional."
-        log_warn "Check that the DNS A record for ${DOMAIN} points to this server."
+        log_warn "SSL certificate issuance could not complete right now."
+        log_warn "Port 80 remains active and fully functional. You can re-run the script later to retry SSL."
     fi
 fi
 
