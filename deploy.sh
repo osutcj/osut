@@ -437,6 +437,12 @@ rm -f /etc/nginx/conf.d/${APP_NAME}.conf /etc/nginx/conf.d/${APP_NAME}*.conf 2>/
 rm -f /etc/nginx/sites-enabled/${APP_NAME}.conf 2>/dev/null || true
 rm -f /etc/nginx/sites-available/${APP_NAME}.conf 2>/dev/null || true
 
+# Remove any old legacy configs referencing osut.org or 1.osut.org that cause 502/expired certs
+grep -rlE "(1\.osut\.org|osut\.org)" /etc/nginx/sites-enabled/ /etc/nginx/conf.d/ 2>/dev/null | while read -r legacy_conf; do
+    log_warn "Removing legacy Nginx virtual host: $legacy_conf"
+    rm -f "$legacy_conf" 2>/dev/null || true
+done
+
 # Strip default_server from any remaining configurations to prevent conflict
 grep -rl "default_server" /etc/nginx/sites-enabled/ /etc/nginx/conf.d/ 2>/dev/null | while read -r conf_file; do
     sed -i 's/default_server//g' "$conf_file" 2>/dev/null || true
@@ -628,7 +634,8 @@ if [ "$ENABLE_SSL" = true ] && [ "$DOMAIN" != "localhost" ] && ! [[ "$DOMAIN" =~
             log_success "Let's Encrypt SSL certificate successfully obtained!"
             log_info "Upgrading Nginx to HTTPS with Port 80 redirect..."
             write_ssl_nginx
-            nginx -t && systemctl reload nginx
+            nginx -t
+            systemctl restart nginx
             SSL_SUCCESS=true
             log_success "HTTPS reverse proxy active on Port 443."
             
