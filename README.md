@@ -56,6 +56,48 @@ The official portal for **OSUT (Organizația Studenților din Universitatea Tehn
    ```
    Open [http://localhost:3000](http://localhost:3000) to see the result.
 
+## 🚀 Production Deployment (Port 80 & Port 443 SSL via Nginx)
+
+An automated deployment script is provided to host the project on any Linux server (e.g. DigitalOcean droplet at `164.92.128.118`) with **Port 80 (HTTP)** and **Port 443 (HTTPS)** managed by Nginx and proxied to Next.js running under `systemd`:
+
+### Quick Start on the Server:
+```bash
+git clone https://github.com/osutcj/osut.git
+cd osut
+sudo ./deploy.sh --domain osut.org --email office@osutcluj.com
+```
+
+### Script Features:
+- Automatically installs required dependencies (`Node.js 22 LTS`, `npm`, `git`, `nginx`, `certbot`, `python3-certbot-nginx`, build tools).
+- Synchronizes server time to prevent clock skew issues.
+- Clones/pulls the latest code directly from GitHub into `/var/www/osut`.
+- Sets up dedicated system user permissions (`osut`) and data storage directories (`public/assets/data`, `public/assets/uploads`).
+- Configures environment variables in `.env.local` and generates a secure admin password if not provided.
+- Compiles the Next.js production build (`npm run build`).
+- Manages the Next.js process via `systemd` (`osut.service`) bound to internal loopback (`127.0.0.1:3000`).
+- Configures **Nginx** on **Port 80** with ACME webroot challenge support.
+- Acquires a **Let's Encrypt SSL certificate** via Certbot using the provided email.
+- Automatically upgrades Nginx to **Port 443 (HTTPS)** with modern TLS ciphers and HTTP-to-HTTPS 301 redirection.
+- Enables Certbot auto-renewal timer for zero-touch SSL certificate renewals.
+- Configures firewall rules (`ufw` or `firewalld`) for web ports 80 and 443 while preserving SSH (port 22).
+- Performs automated local health checks on port 80/443 to verify immediate response.
+
+### Available Options:
+```bash
+sudo ./deploy.sh --help
+# Options:
+#   --domain <domain>         Domain name (default: osut.org)
+#   --email <email>           Email for Let's Encrypt alerts (default: office@osutcluj.com)
+#   --dir <path>              Installation directory (default: /var/www/osut)
+#   --user <username>         Service user (default: osut)
+#   --branch <branch>         Git branch to deploy (default: main)
+#   --admin-password <pass>   Admin dashboard password (auto-generated if omitted)
+#   --internal-port <port>    Internal Next.js port (default: 3000)
+#   --skip-ssl                Deploy Port 80 HTTP only (skip Certbot)
+```
+
+
+
 ## 📖 Project Structure
 
 - `app/`: Contains all routes and API endpoints.
