@@ -6,8 +6,13 @@ import AwardsTimeline from "@/components/home/AwardsTimeline";
 import BlogSection from "@/components/BlogSection";
 import HomeProjects from "@/components/home/HomeProjects";
 import Link from "next/link";
+import { getPosts } from "@/lib/posts";
 
-export default function Home() {
+export const dynamic = "force-dynamic";
+
+export default async function Home() {
+  const posts = await getPosts();
+
   return (
     <main className="main-wrap homepage mx-auto font-sans text-gray-800 dark:text-gray-200">
       <HeroSection />
@@ -22,7 +27,7 @@ export default function Home() {
           <div className="h-[2px] flex-1 bg-gradient-to-l from-transparent to-red-600 opacity-100"></div>
         </div>
         
-        <BlogSection limit={3} />
+        <BlogSection limit={3} initialPosts={posts} />
         
         <div className="flex justify-center mt-8 mb-16">
           <Link href="/educational" className="bg-[#b51c1c] hover:bg-[#8f1515] text-white font-bold py-3 px-8 rounded-xl transition-all hover:scale-105 shadow-xl hover:shadow-red-900/50">

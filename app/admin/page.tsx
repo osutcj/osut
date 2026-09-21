@@ -675,6 +675,16 @@ export default function AdminDashboard() {
                   
                   {/* Actions Container */}
                   <div className="shrink-0 flex sm:flex-col gap-2 w-full sm:w-auto mt-2 sm:mt-0">
+                    {/* View Post Link */}
+                    <a
+                      href={`/educational/post/${post.id}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="flex-1 sm:flex-none text-zinc-300 hover:text-white bg-white/5 hover:bg-white/10 px-4 py-2.5 rounded-xl transition-colors border border-white/10 font-semibold text-sm text-center flex items-center justify-center gap-1.5"
+                    >
+                      <span>Vezi</span>
+                      <i className="fa-solid fa-arrow-up-right-from-square text-xs"></i>
+                    </a>
                     {/* Edit Button */}
                     <button
                       onClick={() => startEditing(post)}

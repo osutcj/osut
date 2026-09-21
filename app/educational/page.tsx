@@ -1,5 +1,8 @@
 import { Metadata } from "next";
 import EducationalContent from "./EducationalContent";
+import { getPosts } from "@/lib/posts";
+
+export const dynamic = "force-dynamic";
 
 export const metadata: Metadata = {
   title: "Educațional & Studenți Reprezentanți",
@@ -10,6 +13,7 @@ export const metadata: Metadata = {
   },
 };
 
-export default function EducationalPage() {
-  return <EducationalContent />;
+export default async function EducationalPage() {
+  const posts = await getPosts();
+  return <EducationalContent initialPosts={posts} />;
 }

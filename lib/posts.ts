@@ -76,6 +76,16 @@ export async function getPosts(): Promise<Post[]> {
 }
 
 /**
+ * Fetch a single post by ID.
+ */
+export async function getPost(id: number | string): Promise<Post | null> {
+  const numericId = typeof id === "string" ? parseInt(id, 10) : id;
+  if (isNaN(numericId)) return null;
+  const posts = await getPosts();
+  return posts.find((p) => p.id === numericId) || null;
+}
+
+/**
  * Save all posts to Vercel Blob or local storage.
  */
 export async function savePosts(posts: Post[]): Promise<void> {

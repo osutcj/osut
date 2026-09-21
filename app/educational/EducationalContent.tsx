@@ -3,6 +3,7 @@
 import React, { useState, useEffect, useRef } from "react";
 import "./studenti-reprezentanti.css";
 import BlogSection from "@/components/BlogSection";
+import { Post } from "@/lib/posts";
 
 const DOCUMENTS = [
     { title: "CARTA", icon: "fas fa-book", downloadLink: "/assets/pdf/carta.pdf" },
@@ -338,7 +339,7 @@ const ReprezCard = ({ member }: { member: Representative }) => {
     );
 };
 
-export default function EducationalContent() {
+export default function EducationalContent({ initialPosts }: { initialPosts?: Post[] } = {}) {
     const [activeTab, setActiveTab] = useState<"senat" | "consiliu" | null>(null);
     const [isDropdownOpen, setIsDropdownOpen] = useState(false);
     const [selectedFacultyId, setSelectedFacultyId] = useState<string | null>(null);
@@ -370,7 +371,7 @@ OSUT te informează          </h1>
         </div>
                 
                 <div className="w-full max-w-7xl">
-                    <BlogSection />
+                    <BlogSection initialPosts={initialPosts} />
                 </div>
             </div>
 
