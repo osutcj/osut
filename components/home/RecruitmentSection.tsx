@@ -8,7 +8,7 @@ const STORAGE_KEY = "osut_recruitment_presentation_seen";
 
 const HEADLINE_TEXT = "Transformă-ți anii de studenție într-o experiență de neuitat!";
 const BODY_TEXT =
-  "Vrei să faci mai mult decât să mergi la cursuri? În OSUT Cluj găsești comunitatea în care ideile tale prind contur. Aici organizezi proiecte de amploare, participi la traininguri, te implici în apărarea drepturilor studențești și legi prietenii solide care durează o viață întreagă. Fii tu cel care face diferența în comunitatea universitară!";
+  "Organizația Studenților din Universitatea Tehnică din Cluj-Napoca dă startul recrutărilor și te așteaptă să transformi studenția într-o experiență de neuitat. Dacă vrei să înveți lucruri noi, să ieși din zona de confort și să-ți faci prieteni pe viață, acum e momentul!";
 
 function smoothScrollToCenter(element: HTMLElement, duration: number = 1400) {
   const startY = window.pageYOffset || document.documentElement.scrollTop;
