@@ -5,6 +5,7 @@ import CounterStats from "@/components/home/CounterStats";
 import AwardsTimeline from "@/components/home/AwardsTimeline";
 import BlogSection from "@/components/BlogSection";
 import HomeProjects from "@/components/home/HomeProjects";
+import RecruitmentSection from "@/components/home/RecruitmentSection";
 import Link from "next/link";
 import { getPosts } from "@/lib/posts";
 
@@ -17,6 +18,7 @@ export default async function Home() {
     <main className="main-wrap homepage mx-auto font-sans text-gray-800 dark:text-gray-200">
       <HeroSection />
       <CounterStats />
+      <RecruitmentSection />
       
       <div className="content">
         <div id="blog-anchor" className="w-full max-w-5xl flex items-center justify-center mt-24 mb-12 mx-auto px-6 gap-4 md:gap-8">
