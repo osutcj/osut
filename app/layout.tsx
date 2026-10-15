@@ -15,6 +15,7 @@ const geistSans = Geist({
 const geistMono = Geist_Mono({
   variable: "--font-geist-mono",
   subsets: ["latin"],
+  preload: false,
 });
 
 const poppins = Poppins({
@@ -145,8 +146,12 @@ export default function RootLayout({
           <LoadingScreen />
           <Header />
           {children}
-          <Analytics />
-          <SpeedInsights />
+          {process.env.VERCEL === "1" && (
+            <>
+              <Analytics />
+              <SpeedInsights />
+            </>
+          )}
           <Footer />
       </body>
     </html>

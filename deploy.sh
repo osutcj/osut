@@ -276,10 +276,24 @@ if [ ! -d "$APP_DIR/.git" ]; then
 else
     log_info "Updating repository in ${APP_DIR} to branch ${BRANCH}..."
     cd "$APP_DIR"
+
+    # Safeguard user-created posts and uploads before hard reset
+    local posts_backup="/tmp/osut_posts_backup_$$.json"
+    if [ -f "$APP_DIR/public/assets/data/posts.json" ] && [ -s "$APP_DIR/public/assets/data/posts.json" ]; then
+        cp "$APP_DIR/public/assets/data/posts.json" "$posts_backup"
+    fi
+
     safe_git remote set-url origin "$GIT_REPO"
     safe_git fetch origin "$BRANCH"
     safe_git checkout "$BRANCH"
     safe_git reset --hard "origin/$BRANCH"
+
+    # Restore posts.json if backup exists
+    if [ -f "$posts_backup" ]; then
+        cp "$posts_backup" "$APP_DIR/public/assets/data/posts.json"
+        rm -f "$posts_backup"
+    fi
+
     log_success "Repository updated."
 fi
 
@@ -507,6 +521,14 @@ server {
         try_files \$uri =404;
     }
 
+    # Static serving for user uploads
+    location /assets/uploads/ {
+        alias ${APP_DIR}/public/assets/uploads/;
+        expires 30d;
+        add_header Cache-Control "public, no-transform";
+        try_files \$uri =404;
+    }
+
     # Reverse proxy to local Next.js instance
     location / {
         proxy_pass http://127.0.0.1:${APP_INTERNAL_PORT};
@@ -568,6 +590,14 @@ server {
     ssl_session_timeout 10m;
 
     client_max_body_size 50M;
+
+    # Static serving for user uploads
+    location /assets/uploads/ {
+        alias ${APP_DIR}/public/assets/uploads/;
+        expires 30d;
+        add_header Cache-Control "public, no-transform";
+        try_files \$uri =404;
+    }
 
     location / {
         proxy_pass http://127.0.0.1:${APP_INTERNAL_PORT};

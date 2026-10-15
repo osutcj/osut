@@ -23,6 +23,7 @@ export default function BlogSection({
   const [loading, setLoading] = useState(initialPosts.length === 0);
   const [currentPage, setCurrentPage] = useState(1);
   const [copiedId, setCopiedId] = useState<number | null>(null);
+  const [brokenImages, setBrokenImages] = useState<Record<number, boolean>>({});
   const postsPerPage = 9;
 
   useEffect(() => {
@@ -112,11 +113,12 @@ export default function BlogSection({
                   {/* Image Container */}
                   <div className="w-full h-48 sm:h-56 relative overflow-hidden bg-white/10 shrink-0">
                     <Image
-                      src={post.imageUrl || "/assets/images/images/bgr.webp"}
+                      src={brokenImages[post.id] ? "/assets/images/images/bgr.webp" : (post.imageUrl || "/assets/images/images/bgr.webp")}
                       alt={post.title}
                       fill
                       sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
                       className="object-cover rounded-t-2xl m-0 block transition-transform duration-500 group-hover:scale-105"
+                      onError={() => setBrokenImages((prev) => ({ ...prev, [post.id]: true }))}
                     />
 
                     {/* Quick Copy Link Button */}

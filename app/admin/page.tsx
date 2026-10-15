@@ -128,6 +128,7 @@ export default function AdminDashboard() {
   const [showPreview, setShowPreview] = useState(false);
   const [isFullPreviewOpen, setIsFullPreviewOpen] = useState(false); // Modal state for full preview
   const [previewImageUrl, setPreviewImageUrl] = useState<string | null>(null);
+  const [brokenImages, setBrokenImages] = useState<Record<number, boolean>>({});
   const [toast, setToast] = useState<{ message: string, type: 'success' | 'error' } | null>(null);
 
   const showToast = (message: string, type: 'success' | 'error' = 'success') => {
@@ -655,11 +656,12 @@ export default function AdminDashboard() {
                     {/* Small preview image */}
                     <div className="w-24 h-24 shrink-0 bg-black/40 rounded-xl overflow-hidden relative">
                       <Image 
-                        src={post.imageUrl || "/assets/images/images/bgr.webp"} 
+                        src={brokenImages[post.id] ? "/assets/images/images/bgr.webp" : (post.imageUrl || "/assets/images/images/bgr.webp")} 
                         alt="thumb" 
                         fill
                         sizes="96px"
                         className="object-cover" 
+                        onError={() => setBrokenImages((prev) => ({ ...prev, [post.id]: true }))}
                       />
                     </div>
                     
