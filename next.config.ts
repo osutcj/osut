@@ -1,17 +1,19 @@
 import type { NextConfig } from "next";
+import { initOpenNextCloudflareForDev } from "@opennextjs/cloudflare";
 
 const nextConfig: NextConfig = {
-  output: "export",
   images: {
     unoptimized: true,
     remotePatterns: [
       {
-        protocol: 'https',
-        hostname: '**.public.blob.vercel-storage.com',
-        port: '',
+        protocol: "https",
+        hostname: "**.public.blob.vercel-storage.com",
+        port: "",
       },
     ],
   },
 };
 
 export default nextConfig;
+
+initOpenNextCloudflareForDev();

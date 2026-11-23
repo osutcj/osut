@@ -3,27 +3,72 @@ import { promises as fs } from "fs";
 import path from "path";
 import { put } from "@vercel/blob";
 import { getPosts, savePosts, deleteImage, Post } from "@/lib/posts";
-import sharp from "sharp";
 
 export const dynamic = "force-dynamic";
 
-// Password MUST be provided via environment variable
-const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD;
+const ALLOWED_EXTENSIONS = new Set([".webp", ".png", ".jpg", ".jpeg", ".gif", ".svg"]);
+const MIME_TO_EXT: Record<string, string> = {
+  "image/webp": ".webp",
+  "image/png": ".png",
+  "image/jpeg": ".jpg",
+  "image/gif": ".gif",
+  "image/svg+xml": ".svg",
+};
+const EXT_TO_MIME: Record<string, string> = {
+  ".webp": "image/webp",
+  ".png": "image/png",
+  ".jpg": "image/jpeg",
+  ".jpeg": "image/jpeg",
+  ".gif": "image/gif",
+  ".svg": "image/svg+xml",
+};
 
 /**
  * Helper to validate the admin password from the Authorization header.
  */
 function validateAuth(req: Request) {
+  const adminPassword = process.env.ADMIN_PASSWORD;
   const authHeader = req.headers.get("Authorization");
-  if (!ADMIN_PASSWORD) {
+  if (!adminPassword) {
     console.error("ADMIN_PASSWORD is not set in environment variables!");
     return false;
   }
-  const isValid = authHeader === ADMIN_PASSWORD;
+  const isValid = authHeader === adminPassword;
   if (!isValid) {
     console.log("Auth failed: Header doesn't match ADMIN_PASSWORD");
   }
   return isValid;
+}
+
+/**
+ * Saves an uploaded image to Vercel Blob (when configured) or local public uploads.
+ */
+async function saveUploadedImage(file: File): Promise<string> {
+  const bytes = await file.arrayBuffer();
+  const buffer = Buffer.from(bytes);
+
+  const parsed = path.parse(file.name || "image");
+  const cleanName = parsed.name.replace(/[^a-zA-Z0-9_-]/g, "_") || "image";
+  const rawExt = parsed.ext.toLowerCase();
+  const ext = ALLOWED_EXTENSIONS.has(rawExt) ? rawExt : (MIME_TO_EXT[file.type] || ".webp");
+  const contentType = EXT_TO_MIME[ext] || file.type || "image/webp";
+
+  if (process.env.BLOB_READ_WRITE_TOKEN) {
+    const filename = `${Date.now()}-${cleanName}${ext}`;
+    const blob = await put(`posts/${filename}`, buffer, {
+      access: "public",
+      contentType,
+    });
+    return blob.url;
+  }
+
+  const uniqueSuffix = Date.now() + "-" + Math.round(Math.random() * 1e9);
+  const filename = `post-${uniqueSuffix}${ext}`;
+  const uploadDir = path.join(process.cwd(), "public", "assets", "uploads");
+  try { await fs.access(uploadDir); } catch { await fs.mkdir(uploadDir, { recursive: true }); }
+  const filePath = path.join(uploadDir, filename);
+  await fs.writeFile(filePath, buffer);
+  return `/assets/uploads/${filename}`;
 }
 
 export async function POST(req: Request) {
@@ -45,29 +90,7 @@ export async function POST(req: Request) {
     let imageUrl = "/assets/images/images/bgr.webp";
 
     if (file && file.size > 0) {
-      const bytes = await file.arrayBuffer();
-      const buffer = Buffer.from(bytes);
-      const webpBuffer = await sharp(buffer)
-        .resize({ width: 1600, height: 1600, fit: "inside", withoutEnlargement: true })
-        .webp({ quality: 82 })
-        .toBuffer();
-
-      const cleanName = path.parse(file.name || "image").name.replace(/[^a-zA-Z0-9_-]/g, "_") || "image";
-      if (process.env.BLOB_READ_WRITE_TOKEN) {
-        const filename = `${Date.now()}-${cleanName}.webp`;
-        const blob = await put(`posts/${filename}`, webpBuffer, {
-          access: "public",
-        });
-        imageUrl = blob.url;
-      } else {
-        const uniqueSuffix = Date.now() + "-" + Math.round(Math.random() * 1e9);
-        const filename = `post-${uniqueSuffix}.webp`;
-        const uploadDir = path.join(process.cwd(), "public", "assets", "uploads");
-        try { await fs.access(uploadDir); } catch { await fs.mkdir(uploadDir, { recursive: true }); }
-        const filePath = path.join(uploadDir, filename);
-        await fs.writeFile(filePath, webpBuffer);
-        imageUrl = `/assets/uploads/${filename}`;
-      }
+      imageUrl = await saveUploadedImage(file);
     }
 
     const posts = await getPosts();
@@ -127,31 +150,7 @@ export async function PUT(req: Request) {
     }
 
     if (file && file.size > 0) {
-      let newImageUrl = "";
-      const bytes = await file.arrayBuffer();
-      const buffer = Buffer.from(bytes);
-      const webpBuffer = await sharp(buffer)
-        .resize({ width: 1600, height: 1600, fit: "inside", withoutEnlargement: true })
-        .webp({ quality: 82 })
-        .toBuffer();
-
-      const cleanName = path.parse(file.name || "image").name.replace(/[^a-zA-Z0-9_-]/g, "_") || "image";
-      if (process.env.BLOB_READ_WRITE_TOKEN) {
-        const filename = `${Date.now()}-${cleanName}.webp`;
-        const blob = await put(`posts/${filename}`, webpBuffer, {
-          access: "public",
-        });
-        newImageUrl = blob.url;
-      } else {
-        const uniqueSuffix = Date.now() + "-" + Math.round(Math.random() * 1e9);
-        const filename = `post-${uniqueSuffix}.webp`;
-        const uploadDir = path.join(process.cwd(), "public", "assets", "uploads");
-        try { await fs.access(uploadDir); } catch { await fs.mkdir(uploadDir, { recursive: true }); }
-        const filePath = path.join(uploadDir, filename);
-        await fs.writeFile(filePath, webpBuffer);
-        newImageUrl = `/assets/uploads/${filename}`;
-      }
-
+      const newImageUrl = await saveUploadedImage(file);
       await deleteImage(posts[postIndex].imageUrl);
       updatedPost.imageUrl = newImageUrl;
     }
