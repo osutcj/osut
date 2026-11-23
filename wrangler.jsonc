@@ -1,20 +1,7 @@
 {
   "$schema": "node_modules/wrangler/config-schema.json",
   "name": "osut",
-  "main": ".open-next/worker.js",
-  "compatibility_date": "2025-05-05",
-  "compatibility_flags": [
-    "nodejs_compat",
-    "global_fetch_strictly_public"
-  ],
-  "assets": {
-    "directory": ".open-next/assets",
-    "binding": "ASSETS"
-  },
-  "services": [
-    {
-      "binding": "WORKER_SELF_REFERENCE",
-      "service": "osut"
-    }
-  ]
+  "compatibility_date": "2026-08-04",
+  "compatibility_flags": ["nodejs_compat"],
+  "pages_build_output_dir": "out"
 }

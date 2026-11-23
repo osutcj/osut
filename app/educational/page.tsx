@@ -2,7 +2,7 @@ import { Metadata } from "next";
 import EducationalContent from "./EducationalContent";
 import { getPosts } from "@/lib/posts";
 
-export const dynamic = "force-dynamic";
+export const dynamic = "force-static";
 
 export const metadata: Metadata = {
   title: "Educațional & Studenți Reprezentanți",

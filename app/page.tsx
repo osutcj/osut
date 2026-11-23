@@ -9,7 +9,7 @@ import RecruitmentSection from "@/components/home/RecruitmentSection";
 import Link from "next/link";
 import { getPosts } from "@/lib/posts";
 
-export const dynamic = "force-dynamic";
+export const dynamic = "force-static";
 
 export default async function Home() {
   const posts = await getPosts();
